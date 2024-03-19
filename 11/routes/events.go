@@ -37,12 +37,6 @@ func GetEvent(context *gin.Context) {
 }
 
 func CreateEvent(context *gin.Context) {
-	token := context.Request.Header.Get("Authorization")
-
-	if token == "" {
-		context.JSON(http.StatusUnauthorized, gin.H{"message": "not authorized"})
-		return
-	}
 
 	var event models.Event
 	err := context.ShouldBindJSON(&event)
@@ -52,8 +46,9 @@ func CreateEvent(context *gin.Context) {
 		return
 	}
 
-	event.ID = 1
-	event.UserId = 1
+	userId := context.GetInt64("userId")
+
+	event.UserId = userId
 
 	err = event.Save()
 
@@ -73,10 +68,17 @@ func UpdateEvent(context *gin.Context) {
 		return
 	}
 
-	_, err = models.GetEventByID(eventId)
+	event, err := models.GetEventByID(eventId)
 
 	if err != nil {
 		context.JSON(http.StatusNotFound, gin.H{"message": "could not find event"})
+		return
+	}
+
+	userId := context.GetInt64("userId")
+
+	if userId != event.UserId {
+		context.JSON(http.StatusUnauthorized, gin.H{"message": "you are not authorized to do this action"})
 		return
 	}
 
@@ -114,6 +116,13 @@ func DeleteEvent(context *gin.Context) {
 
 	if err != nil {
 		context.JSON(http.StatusNotFound, gin.H{"message": "could not find event"})
+		return
+	}
+
+	userId := context.GetInt64("userId")
+
+	if userId != event.UserId {
+		context.JSON(http.StatusUnauthorized, gin.H{"message": "you are not authorized to do this action"})
 		return
 	}
 
